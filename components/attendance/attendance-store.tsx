@@ -2,27 +2,22 @@
 
 import { CircleAlert, CircleCheck, Info, X } from 'lucide-react'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { DIRECTORY, INITIAL_INSIDE, type Person } from '@/lib/attendance-data'
+import useSWR from 'swr'
+import {
+  checkInPerson,
+  checkOutPerson,
+  getSnapshot,
+  type ActivityEvent,
+  type CheckMethod,
+  type DayFlow,
+  type PresenceRecord,
+  type Punctuality,
+} from '@/app/actions/attendance'
+import type { Person } from '@/lib/attendance-data'
 import { formatTime } from '@/lib/attendance-format'
 import { cn } from '@/lib/utils'
 
-export type CheckMethod = 'Manual' | 'QR'
-export type Punctuality = 'Puntual' | 'Tardío'
-
-export interface PresenceRecord {
-  person: Person
-  entryAt: number
-  status: Punctuality
-  method: CheckMethod
-}
-
-export interface ActivityEvent {
-  id: string
-  kind: 'in' | 'out'
-  person: Person
-  at: number
-  method?: CheckMethod
-}
+export type { ActivityEvent, CheckMethod, PresenceRecord, Punctuality }
 
 type ToastTone = 'success' | 'info' | 'warning'
 interface Toast {
@@ -32,46 +27,34 @@ interface Toast {
   tone: ToastTone
 }
 
+type CheckInResult = { ok: boolean; record: PresenceRecord | null }
+
 interface AttendanceContextValue {
+  loading: boolean
+  error: boolean
+  people: Person[]
   inside: PresenceRecord[]
   activity: ActivityEvent[]
   todayCount: number
   checkOutCount: number
-  checkIn: (person: Person, method: CheckMethod) => { ok: boolean; record: PresenceRecord }
-  checkOut: (personId: string) => void
+  weekly: DayFlow[]
+  totalStudents: number
+  punctuality: number
+  checkIn: (person: Person, method: CheckMethod) => Promise<CheckInResult>
+  checkOut: (personId: string) => Promise<void>
+  refresh: () => Promise<unknown>
   notify: (toast: Omit<Toast, 'id'>) => void
 }
 
 const AttendanceContext = createContext<AttendanceContextValue | null>(null)
 
-function punctualityFor(person: Person, at: Date): Punctuality {
-  const shiftStart = person.shift === 'Mañana' ? 7 * 60 : 13 * 60
-  const minutes = at.getHours() * 60 + at.getMinutes()
-  return minutes <= shiftStart + 10 ? 'Puntual' : 'Tardío'
-}
-
-function buildInitialInside(): PresenceRecord[] {
-  const now = Date.now()
-  return INITIAL_INSIDE.flatMap((seed) => {
-    const person = DIRECTORY.find((p) => p.id === seed.id)
-    if (!person) return []
-    return [{ person, entryAt: now - seed.minutesAgo * 60000, status: seed.status, method: seed.method }]
-  }).sort((a, b) => b.entryAt - a.entryAt)
-}
+const EMPTY: never[] = []
 
 export function AttendanceProvider({ children }: { children: React.ReactNode }) {
-  const [inside, setInside] = useState<PresenceRecord[]>(buildInitialInside)
-  const [activity, setActivity] = useState<ActivityEvent[]>(() =>
-    buildInitialInside().map((r) => ({
-      id: `seed-${r.person.id}`,
-      kind: 'in' as const,
-      person: r.person,
-      at: r.entryAt,
-      method: r.method,
-    })),
-  )
-  const [todayCount, setTodayCount] = useState(986)
-  const [checkOutCount, setCheckOutCount] = useState(214)
+  const { data, error, isLoading, mutate } = useSWR('attendance-snapshot', () => getSnapshot(), {
+    refreshInterval: 15000,
+    revalidateOnFocus: true,
+  })
   const [toasts, setToasts] = useState<Toast[]>([])
   const toastId = useRef(0)
   const timers = useRef<number[]>([])
@@ -92,48 +75,71 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
     [dismiss],
   )
 
+  const offline = useCallback(
+    () => notify({ tone: 'warning', title: 'Sin conexión con la base de datos', description: 'Intenta de nuevo en unos segundos.' }),
+    [notify],
+  )
+
   const checkIn = useCallback(
-    (person: Person, method: CheckMethod) => {
-      const existing = inside.find((r) => r.person.id === person.id)
-      if (existing) {
-        notify({
-          tone: 'warning',
-          title: 'Ya se encuentra dentro',
-          description: `${person.name} ingresó a las ${formatTime(existing.entryAt)}.`,
-        })
-        return { ok: false, record: existing }
+    async (person: Person, method: CheckMethod): Promise<CheckInResult> => {
+      try {
+        const res = await checkInPerson(person.id, method)
+        if (!res.record) {
+          notify({ tone: 'warning', title: 'No se pudo registrar', description: res.error })
+          return { ok: false, record: null }
+        }
+        if (res.ok) {
+          notify({ tone: 'success', title: 'Ingreso registrado', description: `${person.name} · ${formatTime(res.record.entryAt)}` })
+        } else {
+          notify({
+            tone: 'warning',
+            title: 'Ya se encuentra dentro',
+            description: `${person.name} ingresó a las ${formatTime(res.record.entryAt)}.`,
+          })
+        }
+        await mutate()
+        return res
+      } catch {
+        offline()
+        return { ok: false, record: null }
       }
-      const now = new Date()
-      const record: PresenceRecord = { person, entryAt: now.getTime(), status: punctualityFor(person, now), method }
-      setInside((list) => [record, ...list])
-      setActivity((list) => [{ id: `in-${now.getTime()}`, kind: 'in', person, at: now.getTime(), method }, ...list])
-      setTodayCount((c) => c + 1)
-      notify({ tone: 'success', title: 'Ingreso registrado', description: `${person.name} · ${formatTime(now)}` })
-      return { ok: true, record }
     },
-    [inside, notify],
+    [mutate, notify, offline],
   )
 
   const checkOut = useCallback(
-    (personId: string) => {
-      const record = inside.find((r) => r.person.id === personId)
-      if (!record) return
-      const now = Date.now()
-      setInside((list) => list.filter((r) => r.person.id !== personId))
-      setActivity((list) => [{ id: `out-${now}`, kind: 'out', person: record.person, at: now }, ...list])
-      setCheckOutCount((c) => c + 1)
-      notify({
-        tone: 'success',
-        title: 'Salida confirmada',
-        description: `${record.person.name} salió a las ${formatTime(now)}.`,
-      })
+    async (personId: string) => {
+      const name = data?.inside.find((r) => r.person.id === personId)?.person.name ?? 'La persona'
+      try {
+        const res = await checkOutPerson(personId)
+        if (res.ok) notify({ tone: 'success', title: 'Salida confirmada', description: `${name} salió a las ${formatTime(Date.now())}.` })
+        else notify({ tone: 'info', title: 'Sin ingreso activo', description: `${name} no tiene un ingreso abierto hoy.` })
+        await mutate()
+      } catch {
+        offline()
+      }
     },
-    [inside, notify],
+    [data, mutate, notify, offline],
   )
 
-  const value = useMemo(
-    () => ({ inside, activity, todayCount, checkOutCount, checkIn, checkOut, notify }),
-    [inside, activity, todayCount, checkOutCount, checkIn, checkOut, notify],
+  const value = useMemo<AttendanceContextValue>(
+    () => ({
+      loading: isLoading,
+      error: !!error,
+      people: data?.people ?? EMPTY,
+      inside: data?.inside ?? EMPTY,
+      activity: data?.activity ?? EMPTY,
+      todayCount: data?.todayCount ?? 0,
+      checkOutCount: data?.checkOutCount ?? 0,
+      weekly: data?.weekly ?? EMPTY,
+      totalStudents: data?.totalStudents ?? 0,
+      punctuality: data?.punctuality ?? 0,
+      checkIn,
+      checkOut,
+      refresh: () => mutate(),
+      notify,
+    }),
+    [data, error, isLoading, checkIn, checkOut, mutate, notify],
   )
 
   return (

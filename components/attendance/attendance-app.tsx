@@ -9,6 +9,7 @@ import {
   Moon,
   Power,
   Sun,
+  Users,
   type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useState, useSyncExternalStore } from 'react'
@@ -23,14 +24,16 @@ import { CheckInView } from './check-in-view'
 import { CheckOutView } from './check-out-view'
 import { DashboardView } from './dashboard-view'
 import { ScheduleView } from './schedule-view'
+import { DirectoryView } from './directory-view'
 
-export type ViewId = 'inicio' | 'ingreso' | 'salida' | 'horarios'
+export type ViewId = 'inicio' | 'ingreso' | 'salida' | 'horarios' | 'directorio'
 
 export const NAV: { id: ViewId; label: string; short: string; description: string; icon: LucideIcon }[] = [
   { id: 'inicio', label: 'Inicio', short: 'Inicio', description: 'Resumen de la jornada', icon: LayoutDashboard },
   { id: 'ingreso', label: 'Registro de ingreso', short: 'Ingreso', description: 'Marcar entradas', icon: LogIn },
   { id: 'salida', label: 'Confirmación de salida', short: 'Salida', description: 'Personas dentro', icon: LogOut },
   { id: 'horarios', label: 'Consulta de horarios', short: 'Horarios', description: 'Bloques y clases', icon: CalendarClock },
+  { id: 'directorio', label: 'Directorio y registro', short: 'Personas', description: 'Base de datos', icon: Users },
 ]
 
 const subscribe = () => () => {}
@@ -121,6 +124,7 @@ function AdminShell({
             {view === 'ingreso' && <CheckInView />}
             {view === 'salida' && <CheckOutView onNavigate={navigate} />}
             {view === 'horarios' && <ScheduleView />}
+            {view === 'directorio' && <DirectoryView admin={person} />}
           </div>
         </main>
       </div>
@@ -282,7 +286,7 @@ function MobileNav({ view, onNavigate }: { view: ViewId; onNavigate: (v: ViewId)
   return (
     <nav
       aria-label="Módulos"
-      className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 gap-1 rounded-2xl border bg-card/90 p-1.5 shadow-xl shadow-foreground/10 backdrop-blur-xl lg:hidden"
+      className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 gap-1 rounded-2xl border bg-card/90 p-1.5 shadow-xl shadow-foreground/10 backdrop-blur-xl lg:hidden"
     >
       {NAV.map((item) => {
         const active = item.id === view

@@ -1,20 +1,18 @@
 'use client'
 
-import { ArrowRight, CalendarClock, CircleAlert, GraduationCap, IdCard, Moon, QrCode, ShieldCheck, Sun } from 'lucide-react'
-import { useState } from 'react'
-import { DIRECTORY, type Person } from '@/lib/attendance-data'
+import { ArrowLeft, ArrowRight, CalendarClock, CircleAlert, GraduationCap, IdCard, Loader2, Moon, QrCode, ShieldCheck, Sun, UserPlus } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { findPersonByCedula } from '@/app/actions/attendance'
+import type { Person } from '@/lib/attendance-data'
 import { cn } from '@/lib/utils'
+import { useAttendance } from './attendance-store'
+import { RegisterForm } from './register-form'
 import { Avatar, Segmented, primaryButton } from './ui'
 
 export type Portal = 'student' | 'admin'
 export interface Session {
   portal: Portal
   person: Person
-}
-
-const DEMO_ACCOUNTS: Record<Portal, string[]> = {
-  student: ['e01', 'e04', 'e10'],
-  admin: ['a01', 'a02'],
 }
 
 const digits = (value: string) => value.replace(/\D/g, '')
@@ -31,12 +29,24 @@ export function AccessScreen({
   const [portal, setPortal] = useState<Portal>('student')
   const [cedula, setCedula] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
+  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const { people, refresh, notify } = useAttendance()
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const person = DIRECTORY.find((p) => digits(p.cedula) === digits(cedula))
+    setPending(true)
+    let person: Person | null = null
+    try {
+      person = await findPersonByCedula(cedula)
+    } catch {
+      setError('No pudimos conectar con la base de datos. Intenta de nuevo.')
+      setPending(false)
+      return
+    }
+    setPending(false)
     if (!person) {
-      setError('No encontramos esa cédula en el directorio institucional.')
+      setError('No encontramos esa cédula. Si eres nuevo, crea tu cuenta abajo.')
       return
     }
     if (portal === 'admin' && person.role !== 'Administrador') {
@@ -50,7 +60,10 @@ export function AccessScreen({
     onEnter({ portal, person })
   }
 
-  const demo = DEMO_ACCOUNTS[portal].map((id) => DIRECTORY.find((p) => p.id === id)!)
+  const demo = useMemo(
+    () => people.filter((p) => p.role === (portal === 'student' ? 'Estudiante' : 'Administrador')).slice(0, 3),
+    [people, portal],
+  )
 
   return (
     <div className="min-h-dvh md:grid md:grid-cols-2">
@@ -101,6 +114,32 @@ export function AccessScreen({
       </section>
 
       <section className="flex items-center justify-center px-4 py-10 sm:px-8">
+        {mode === 'register' ? (
+          <div className="flex w-full max-w-md animate-rise flex-col gap-6">
+            <div>
+              <button
+                type="button"
+                onClick={() => setMode('login')}
+                className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <ArrowLeft className="size-4" aria-hidden />
+                Volver al ingreso
+              </button>
+              <h2 className="text-2xl font-semibold tracking-tight">Hoja de registro</h2>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                Completa tus datos para crear tu cuenta de estudiante. Quedarás guardado en la base de datos de la institución.
+              </p>
+            </div>
+            <RegisterForm
+              submitLabel="Crear mi cuenta"
+              onRegistered={(person) => {
+                notify({ tone: 'success', title: '¡Bienvenido!', description: `Cuenta creada para ${person.name}.` })
+                refresh()
+                onEnter({ portal: 'student', person })
+              }}
+            />
+          </div>
+        ) : (
         <form onSubmit={submit} className="flex w-full max-w-md animate-rise flex-col gap-6" noValidate>
           <div>
             <h2 className="text-2xl font-semibold tracking-tight">Ingresa al sistema</h2>
@@ -153,12 +192,28 @@ export function AccessScreen({
             )}
           </div>
 
-          <button type="submit" disabled={digits(cedula).length < 6} className={cn(primaryButton, 'h-12 text-base')}>
+          <button type="submit" disabled={pending || digits(cedula).length < 6} className={cn(primaryButton, 'h-12 text-base')}>
             {portal === 'student' ? 'Entrar al portal estudiantil' : 'Entrar al panel administrativo'}
-            <ArrowRight className="size-4" aria-hidden />
+            {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <ArrowRight className="size-4" aria-hidden />}
           </button>
 
-          <div className="rounded-2xl border border-dashed p-4">
+          {portal === 'student' && (
+            <div className="flex flex-col items-center gap-3 rounded-2xl bg-muted/60 p-4 text-center sm:flex-row sm:text-left">
+              <p className="flex-1 text-sm text-muted-foreground">
+                <span className="font-semibold text-foreground">¿Eres nuevo?</span> Regístrate con tus datos para usar el portal.
+              </p>
+              <button
+                type="button"
+                onClick={() => setMode('register')}
+                className="inline-flex items-center gap-1.5 rounded-xl border bg-card px-3.5 py-2 text-sm font-semibold transition-colors hover:border-primary/40 hover:text-primary"
+              >
+                <UserPlus className="size-4" aria-hidden />
+                Crear cuenta
+              </button>
+            </div>
+          )}
+
+          {demo.length > 0 && <div className="rounded-2xl border border-dashed p-4">
             <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Cuentas de demostración</p>
             <ul className="mt-3 flex flex-col gap-2">
               {demo.map((p) => (
@@ -180,8 +235,9 @@ export function AccessScreen({
                 </li>
               ))}
             </ul>
-          </div>
+          </div>}
         </form>
+        )}
       </section>
     </div>
   )
