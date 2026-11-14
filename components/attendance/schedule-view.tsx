@@ -157,7 +157,7 @@ function DayTabs({ day, setDay, today }: { day: number; setDay: (d: number) => v
   )
 }
 
-function DayView({
+export function DayView({
   sessions,
   day,
   setDay,

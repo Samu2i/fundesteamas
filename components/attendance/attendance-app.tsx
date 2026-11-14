@@ -7,13 +7,18 @@ import {
   LogIn,
   LogOut,
   Moon,
+  Power,
   Sun,
   type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useState, useSyncExternalStore } from 'react'
+import type { Person } from '@/lib/attendance-data'
 import { formatLongDate, formatTime } from '@/lib/attendance-format'
 import { cn } from '@/lib/utils'
+import { AccessScreen, type Session } from './access-screen'
 import { AttendanceProvider, useAttendance, useNow } from './attendance-store'
+import { StudentPortal } from './student-portal'
+import { Avatar } from './ui'
 import { CheckInView } from './check-in-view'
 import { CheckOutView } from './check-out-view'
 import { DashboardView } from './dashboard-view'
@@ -52,18 +57,50 @@ export function AttendanceApp() {
 
   return (
     <AttendanceProvider>
-      <Shell />
+      <PortalRouter />
     </AttendanceProvider>
   )
 }
 
-function Shell() {
-  const [view, setView] = useState<ViewId>('inicio')
+function PortalRouter() {
+  const [session, setSession] = useState<Session | null>(null)
   const [dark, setDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
   }, [dark])
+
+  const toggleTheme = () => setDark((d) => !d)
+  const enter = (next: Session) => {
+    setSession(next)
+    window.scrollTo({ top: 0 })
+  }
+
+  if (!session) return <AccessScreen onEnter={enter} dark={dark} onToggleTheme={toggleTheme} />
+
+  if (session.portal === 'student' && session.person.role === 'Estudiante') {
+    return <StudentPortal person={session.person} dark={dark} onToggleTheme={toggleTheme} onLogout={() => setSession(null)} />
+  }
+
+  if (session.person.role !== 'Administrador') {
+    return <AccessScreen onEnter={enter} dark={dark} onToggleTheme={toggleTheme} />
+  }
+
+  return <AdminShell person={session.person} dark={dark} onToggleTheme={toggleTheme} onLogout={() => setSession(null)} />
+}
+
+function AdminShell({
+  person,
+  dark,
+  onToggleTheme,
+  onLogout,
+}: {
+  person: Person
+  dark: boolean
+  onToggleTheme: () => void
+  onLogout: () => void
+}) {
+  const [view, setView] = useState<ViewId>('inicio')
 
   const navigate = (next: ViewId) => {
     setView(next)
@@ -77,7 +114,7 @@ function Shell() {
       <Sidebar view={view} onNavigate={navigate} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar title={current.label} dark={dark} onToggleTheme={() => setDark((d) => !d)} />
+        <TopBar title={current.label} person={person} dark={dark} onToggleTheme={onToggleTheme} onLogout={onLogout} />
         <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 pb-28 pt-6 sm:px-6 lg:px-10 lg:pb-12 lg:pt-8">
           <div key={view} className="animate-rise">
             {view === 'inicio' && <DashboardView onNavigate={navigate} />}
@@ -182,7 +219,19 @@ function Sidebar({ view, onNavigate }: { view: ViewId; onNavigate: (v: ViewId) =
   )
 }
 
-function TopBar({ title, dark, onToggleTheme }: { title: string; dark: boolean; onToggleTheme: () => void }) {
+function TopBar({
+  title,
+  person,
+  dark,
+  onToggleTheme,
+  onLogout,
+}: {
+  title: string
+  person: Person
+  dark: boolean
+  onToggleTheme: () => void
+  onLogout: () => void
+}) {
   const now = useNow(1000)
   return (
     <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur-xl">
@@ -209,14 +258,20 @@ function TopBar({ title, dark, onToggleTheme }: { title: string; dark: boolean; 
             {dark ? <Sun className="size-4" aria-hidden /> : <Moon className="size-4" aria-hidden />}
           </button>
           <div className="hidden items-center gap-3 border-l pl-3 md:flex">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-foreground/10 font-heading text-sm font-semibold">
-              PL
-            </span>
+            <Avatar name={person.name} role={person.role} />
             <div className="leading-tight">
-              <p className="text-sm font-semibold">Patricia Londoño</p>
-              <p className="text-xs text-muted-foreground">Coordinación</p>
+              <p className="text-sm font-semibold">{person.name}</p>
+              <p className="text-xs text-muted-foreground">{person.course}</p>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={onLogout}
+            aria-label="Cerrar sesión"
+            className="flex size-10 items-center justify-center rounded-xl border bg-card text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-destructive/40 hover:text-destructive"
+          >
+            <Power className="size-4" aria-hidden />
+          </button>
         </div>
       </div>
     </header>

@@ -22,9 +22,9 @@ export const DIRECTORY: Person[] = [
   { id: 'e07', cedula: '1.025.330.914', name: 'Mariana Acosta', role: 'Estudiante', course: '9°C', shift: 'Mañana' },
   { id: 'e08', cedula: '1.025.478.063', name: 'Emiliano Vargas', role: 'Estudiante', course: '9°C', shift: 'Mañana' },
   { id: 'e09', cedula: '1.025.612.785', name: 'Antonella Ríos', role: 'Estudiante', course: '9°C', shift: 'Mañana' },
-  { id: 'e10', cedula: '1.026.204.331', name: 'Tomás Salazar', role: 'Estudiante', course: '8°B', shift: 'Tarde' },
-  { id: 'e11', cedula: '1.026.398.570', name: 'Luciana Patiño', role: 'Estudiante', course: '8°B', shift: 'Tarde' },
-  { id: 'e12', cedula: '1.026.511.842', name: 'Jerónimo Cárdenas', role: 'Estudiante', course: '8°B', shift: 'Tarde' },
+  { id: 'e10', cedula: '1.026.204.331', name: 'Tomás Salazar', role: 'Estudiante', course: '8°B', shift: 'Mañana' },
+  { id: 'e11', cedula: '1.026.398.570', name: 'Luciana Patiño', role: 'Estudiante', course: '8°B', shift: 'Mañana' },
+  { id: 'e12', cedula: '1.026.511.842', name: 'Jerónimo Cárdenas', role: 'Estudiante', course: '8°B', shift: 'Mañana' },
   { id: 'd01', cedula: '79.452.118', name: 'Carlos Méndez', role: 'Profesor', course: 'Docentes', shift: 'Mañana' },
   { id: 'd02', cedula: '52.887.904', name: 'Laura Ríos', role: 'Profesor', course: 'Docentes', shift: 'Mañana' },
   { id: 'd03', cedula: '80.316.552', name: 'Andrés Gómez', role: 'Profesor', course: 'Docentes', shift: 'Mañana' },
@@ -74,7 +74,7 @@ export const BLOCKS: Block[] = [
 ]
 
 export const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
-export const GROUPS = ['9°C', '10°A', '11°B']
+export const GROUPS = ['8°B', '9°C', '10°A', '11°B']
 
 const SUBJECTS = [
   { subject: 'Matemáticas', teacher: 'Carlos Méndez', room: 'Aula 201' },
