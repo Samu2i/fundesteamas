@@ -1,0 +1,184 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-sora), var(--font-inter), ui-sans-serif, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+}
+
+:root {
+  color-scheme: light;
+  --background: oklch(0.975 0.006 250);
+  --foreground: oklch(0.22 0.03 262);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.03 262);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.03 262);
+  --primary: oklch(0.52 0.19 258);
+  --primary-foreground: oklch(0.985 0.008 250);
+  --secondary: oklch(0.955 0.014 255);
+  --secondary-foreground: oklch(0.3 0.05 260);
+  --muted: oklch(0.958 0.01 255);
+  --muted-foreground: oklch(0.5 0.03 258);
+  --accent: oklch(0.945 0.028 255);
+  --accent-foreground: oklch(0.38 0.14 258);
+  --success: oklch(0.56 0.13 163);
+  --success-foreground: oklch(0.99 0.01 163);
+  --destructive: oklch(0.57 0.2 25);
+  --border: oklch(0.912 0.012 255);
+  --input: oklch(0.912 0.012 255);
+  --ring: oklch(0.52 0.19 258);
+  --glow: oklch(0.6 0.19 258 / 0.28);
+  --radius: 0.875rem;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: oklch(0.17 0.02 262);
+  --foreground: oklch(0.96 0.008 255);
+  --card: oklch(0.212 0.024 262);
+  --card-foreground: oklch(0.96 0.008 255);
+  --popover: oklch(0.23 0.025 262);
+  --popover-foreground: oklch(0.96 0.008 255);
+  --primary: oklch(0.66 0.17 256);
+  --primary-foreground: oklch(0.16 0.03 262);
+  --secondary: oklch(0.26 0.025 262);
+  --secondary-foreground: oklch(0.92 0.01 255);
+  --muted: oklch(0.25 0.022 262);
+  --muted-foreground: oklch(0.71 0.025 258);
+  --accent: oklch(0.28 0.05 258);
+  --accent-foreground: oklch(0.9 0.05 255);
+  --success: oklch(0.75 0.15 163);
+  --success-foreground: oklch(0.18 0.03 163);
+  --destructive: oklch(0.68 0.19 25);
+  --border: oklch(0.3 0.025 262);
+  --input: oklch(0.3 0.025 262);
+  --ring: oklch(0.66 0.17 256);
+  --glow: oklch(0.7 0.17 256 / 0.32);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-heading;
+  }
+}
+
+@utility card-glow {
+  transition:
+    box-shadow 0.3s ease,
+    border-color 0.3s ease,
+    transform 0.3s ease;
+  &:hover {
+    border-color: color-mix(in oklch, var(--primary) 45%, var(--border));
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--primary) 22%, transparent),
+      0 14px 40px -14px var(--glow);
+  }
+}
+
+@utility glow-ring {
+  border-color: color-mix(in oklch, var(--success) 55%, var(--border));
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--success) 30%, transparent),
+    0 12px 36px -14px color-mix(in oklch, var(--success) 55%, transparent);
+}
+
+@utility dot-grid {
+  background-image: radial-gradient(
+    color-mix(in oklch, var(--primary-foreground) 24%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 18px 18px;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes scan {
+  0%,
+  100% {
+    top: 8%;
+  }
+  50% {
+    top: 88%;
+  }
+}
+
+@utility animate-rise {
+  animation: rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@utility animate-grow {
+  animation: grow 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  transform-origin: bottom;
+}
+
+@utility animate-scan {
+  animation: scan 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
