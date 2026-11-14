@@ -14,7 +14,7 @@ import {
   UserRound,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { DIRECTORY, type Person, type Role } from '@/lib/attendance-data'
+import type { Person, Role } from '@/lib/attendance-data'
 import { formatLongDate, formatTime, normalize } from '@/lib/attendance-format'
 import { cn } from '@/lib/utils'
 import { useAttendance, type CheckMethod, type PresenceRecord } from './attendance-store'
@@ -28,7 +28,7 @@ const ROLE_OPTIONS: { value: Role; label: string; icon: typeof GraduationCap }[]
 ]
 
 export function CheckInView() {
-  const { inside, activity, checkIn, notify } = useAttendance()
+  const { people, inside, activity, checkIn, notify } = useAttendance()
   const [role, setRole] = useState<Role>('Estudiante')
   const [query, setQuery] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -40,27 +40,27 @@ export function CheckInView() {
   const results = useMemo(() => {
     const q = normalize(query)
     const digits = query.replace(/\D/g, '')
-    return DIRECTORY.filter(
+    return people.filter(
       (p) =>
         p.role === role &&
         (normalize(p.name).includes(q) || (digits.length > 0 && p.cedula.replace(/\D/g, '').includes(digits))),
     )
-  }, [role, query])
+  }, [people, role, query])
 
-  const selected = DIRECTORY.find((p) => p.id === selectedId) ?? null
+  const selected = people.find((p) => p.id === selectedId) ?? null
 
-  const register = (person: Person, method: CheckMethod) => {
-    const result = checkIn(person, method)
-    setLast({ record: result.record, duplicate: !result.ok })
+  const register = async (person: Person, method: CheckMethod) => {
     setSelectedId(null)
     setQuery('')
+    const result = await checkIn(person, method)
+    if (result.record) setLast({ record: result.record, duplicate: !result.ok })
   }
 
   const startScan = () => setScanning(true)
 
   const finishScan = () => {
     setScanning(false)
-    const candidates = DIRECTORY.filter((p) => p.role === role && !insideIds.has(p.id))
+    const candidates = people.filter((p) => p.role === role && !insideIds.has(p.id))
     if (candidates.length === 0) {
       notify({ tone: 'info', title: 'Sin códigos pendientes', description: `Todo el personal de ${role.toLowerCase()} ya registró ingreso.` })
       return

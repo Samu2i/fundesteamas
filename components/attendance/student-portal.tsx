@@ -160,14 +160,14 @@ function AccessTab({ person, onSeeClasses }: { person: Person; onSeeClasses: () 
   const myEvents = activity.filter((e) => e.person.id === person.id).slice(0, 6)
   const firstName = person.name.split(' ')[0]
 
-  const handleDetected = () => {
+  const handleDetected = async () => {
     setScanning(false)
     if (record) {
-      checkOut(person.id)
+      await checkOut(person.id)
       setResult({ kind: 'out', at: Date.now() })
     } else {
-      const res = checkIn(person, 'QR')
-      setResult({ kind: 'in', at: res.record.entryAt, status: res.record.status, duplicate: !res.ok })
+      const res = await checkIn(person, 'QR')
+      if (res.record) setResult({ kind: 'in', at: res.record.entryAt, status: res.record.status, duplicate: !res.ok })
     }
   }
 

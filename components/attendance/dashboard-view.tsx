@@ -14,25 +14,23 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react'
-import { TOTAL_STUDENTS, WEEKLY_FLOW } from '@/lib/attendance-data'
-import { formatNumber, formatTime, mondayIndex } from '@/lib/attendance-format'
+import { formatNumber, formatTime } from '@/lib/attendance-format'
 import { cn } from '@/lib/utils'
 import type { ViewId } from './attendance-app'
 import { useAttendance, useNow } from './attendance-store'
 import { Avatar, Panel } from './ui'
 
 export function DashboardView({ onNavigate }: { onNavigate: (v: ViewId) => void }) {
-  const { inside, todayCount } = useAttendance()
+  const { inside, todayCount, totalStudents, people, punctuality } = useAttendance()
   const now = useNow(1000)
   const hour = now.getHours()
   const greeting = hour < 5 ? 'Buenas noches' : hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches'
-  const punctuality = 94.2
 
   const stats: { label: string; value: string; hint: string; icon: LucideIcon; tone: 'primary' | 'success' | 'neutral' }[] = [
-    { label: 'Total de estudiantes', value: formatNumber(TOTAL_STUDENTS), hint: '+32 este periodo', icon: Users, tone: 'primary' },
-    { label: 'Asistencias hoy', value: formatNumber(todayCount), hint: `${Math.round((todayCount / TOTAL_STUDENTS) * 100)}% de la matrícula`, icon: UserCheck, tone: 'success' },
+    { label: 'Total de estudiantes', value: formatNumber(totalStudents), hint: `${people.length} personas en la base de datos`, icon: Users, tone: 'primary' },
+    { label: 'Asistencias hoy', value: formatNumber(todayCount), hint: `${people.length ? Math.round((todayCount / people.length) * 100) : 0}% del directorio`, icon: UserCheck, tone: 'success' },
     { label: 'Salidas pendientes', value: formatNumber(inside.length), hint: 'Personas dentro ahora', icon: DoorOpen, tone: 'neutral' },
-    { label: 'Puntualidad', value: `${punctuality}%`, hint: '+1,8 pts vs. semana pasada', icon: Timer, tone: 'primary' },
+    { label: 'Puntualidad', value: `${punctuality.toLocaleString('es-CO')}%`, hint: 'Últimos 5 días con registros', icon: Timer, tone: 'primary' },
   ]
 
   return (
@@ -160,9 +158,15 @@ function StatCard({
   )
 }
 
+const WEEKDAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+
 function WeeklyChart() {
-  const today = mondayIndex(new Date())
-  const max = TOTAL_STUDENTS
+  const { weekly } = useAttendance()
+  const WEEKLY_FLOW = weekly.length ? weekly : [{ day: '—', total: 0, onTime: 0 }]
+  const todayLabel = WEEKDAY_LABELS[new Date().getDay()]
+  const today = WEEKLY_FLOW.length - 1 >= 0 && WEEKLY_FLOW[WEEKLY_FLOW.length - 1].day === todayLabel ? WEEKLY_FLOW.length - 1 : -1
+  const peak = Math.max(...WEEKLY_FLOW.map((d) => d.total), 1)
+  const max = Math.max(4, Math.ceil(peak / 4) * 4)
   const avg = Math.round(WEEKLY_FLOW.reduce((s, d) => s + d.total, 0) / WEEKLY_FLOW.length)
   const best = WEEKLY_FLOW.reduce((a, b) => (b.total > a.total ? b : a))
 
